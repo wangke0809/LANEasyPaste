@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LANEasyPaste</title>
+    <link rel="stylesheet" href="./pure-min.css">
+    <link rel="stylesheet" href="./LANEasyPaste.css">
+    <!--[if lte IE 8]>
+        <link rel="stylesheet" href="./grids-responsive-old-ie-min.css">
+    <![endif]-->
+    <!--[if gt IE 8]><!-->
+    <link rel="stylesheet" href="./grids-responsive-min.css">
+    <!--<![endif]-->
+</head>
+
+<body>
+    <div class="main">
+        <div class="pure-menu pure-menu-horizontal">
+            <ul class="pure-menu-list">
+                <li class="pure-menu-item">
+                    <a href="/index.html" class="pure-menu-link">LAN
+                        <span class="easy">Easy</span>Paste</a>
+                </li>
+            </ul>
+        </div>
+        <form class="main-padding pure-form">
+            <textarea name="easypaste" class="paste-input pure-input-1" placeholder="Paste something..."></textarea>
+            <button class="button-secondary pure-button" id="EasyPaste">EasyPaste</button>
+        </form>
+        <div id="main-body">
+        </div>
+
+    </div>
+    <p class="tip"></p>
+    <script type="text/javascript" src="./zepto.min.js"></script>
+    <script type="text/javascript" src="./zepto.fx.min.js"></script>
+    <script type="text/javascript" src="./clipboard.min.js"></script>
+    <script>
+        buildItemHTML = function (id, content) {
+            var html = '<div class="main-padding main-item pure-g">';
+            html += '<div class="pure-u-11-12">';
+            html += '<textarea class="main-text" id="text_id_' + id;
+            html += '">';
+            html += "\n";
+            html += content;
+            html += "</textarea>";
+            html += '</div><div class="pure-u-1-12"><p>';
+            html += '<button class="button-secondary-small pure-button" data-clipboard-action="copy" ';
+            html += 'data-clipboard-target="#text_id_' + id;
+            html += '">copy</button></p></div></div>';
+            return html;
+        };
+
+        reInitClipboard = function (clipboard) {
+            if (clipboard) {
+                clipboard.destroy();
+            }
+            return new ClipboardJS('.button-secondary-small');
+        };
+        
+        tip = function(show_left, show_top, content, show_time=500){
+            $(".tip").html(content);
+            $(".tip").css({left: show_left, top: show_top + 30});
+            $(".tip").show();
+            $(".tip").animate({
+                    opacity: 1,
+                }, show_time,
+                'ease-in-out', function(){
+                    $(".tip").hide();
+                    $(".tip").css('opacity', 0);
+                });
+        }
+
+        var clipboard = reInitClipboard();
+        var last_time = 0;
+
+        queryNews = function (clipboard) {
+            $.getJSON('/query', function (data) {
+                var html = '';
+                data_len = data.length;
+                for (var c in data) {
+                    i = data_len - c - 1;
+                    if (data[i][1] > last_time) {
+                        html = buildItemHTML(data[i][1], data[i][0]);
+                        last_time = data[i][1];
+                        $('#main-body').prepend(html);
+                    }
+
+                }
+                clipboard = reInitClipboard();
+            });
+        };
+
+        queryNews();
+
+
+        $('#EasyPaste').on('click', function (e) {
+            if ($('.paste-input').val() == ''){
+                tip(e.pageX - 10, e.pageY - 10, "please paste something...", 1000);
+                return false;
+            }
+            $.post('/easypaste', $('form').serialize(), function (response) {
+                // tip(e.pageX - 10, e.pageY - 10, "success"); // there is no need to tip
+                queryNews(clipboard);
+            }, 'json');
+            return false;
+        });
+
+        setInterval("queryNews()", 1000);
+        
+        clipboard.on('success', function (e) {
+            var show_top = e.trigger.offsetTop;
+            var show_left = e.trigger.offsetLeft;
+            tip(show_left, show_top, 'success');
+        });
+
+        clipboard.on('error', function (e) {
+            var show_top = e.trigger.offsetTop;
+            var show_left = e.trigger.offsetLeft;
+            tip(show_left, show_top, 'error');
+        });
+    </script>
+</body>
+
+</html>
